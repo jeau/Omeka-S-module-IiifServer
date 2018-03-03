@@ -122,16 +122,26 @@ class ConfigForm extends Form implements TranslatorAwareInterface
             'options' => [
                 'label' => 'Force base of url (to)', // @translate
             ],
-        ]);
+    ]);
 
-        $this->add([
-            'name' => 'iiifserver_image',
-            'type' => Fieldset::class,
-            'options' => [
-                'label' => 'Image server', // @translate
-                'info' => 'Images may be processed internally before to be sent to browser.', // @translate
-            ],
-        ]);
+
+	$manifestFieldset->add([
+		'name' => 'iiifserver_manifest_search_service_url',
+		'type' => Url::class,
+		'options' => [
+			'label' => 'Search service url', // @translate
+			'info' => 'If any, this url to a IIIF search service provide ...',  // @translate
+		],
+	]);
+
+	$this->add([
+		'name' => 'iiifserver_image',
+		'type' => Fieldset::class,
+		'options' => [
+			'label' => 'Image server', // @translate
+			'info' => 'Images may be processed internally before to be sent to browser.', // @translate
+		],
+	]);
         $imageFieldset = $this->get('iiifserver_image');
 
         $imageFieldset->add([

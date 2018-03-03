@@ -369,6 +369,7 @@ return [
             'iiifserver_manifest_logo_default' => '',
             'iiifserver_manifest_force_url_from' => '',
             'iiifserver_manifest_force_url_to' => '',
+	    'iiifserver_manifest_search_service_url' => '',
             'iiifserver_image_creator' => 'Auto',
             'iiifserver_image_max_size' => 10000000,
             'iiifserver_image_tile_dir' => 'tile',

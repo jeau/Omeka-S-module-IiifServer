@@ -103,6 +103,7 @@ class IiifManifest extends AbstractHelper
             'attribution' => '',
             // A logo to add at the end of the information panel.
             'logo' => '',
+            // Search  
             'service' => '',
             // For example the web page of the item.
             'related' => '',
@@ -167,92 +168,106 @@ class IiifManifest extends AbstractHelper
         }
         if (empty($attribution)) {
             $attribution = $this->view->setting('iiifserver_manifest_attribution_default');
-        }
-        $manifest['attribution'] = $attribution;
+	}
+	$manifest['attribution'] = $attribution;
 
-        $manifest['logo'] = $this->view->setting('iiifserver_manifest_logo_default');
+	$manifest['logo'] = $this->view->setting('iiifserver_manifest_logo_default');
 
-        // TODO To parameter or to extract from metadata.
-        /*
-        $metadata['service'] = array(
-            '@context' =>'http://example.org/ns/jsonld/context.json',
-            '@id' => 'http://example.org/service/example',
-            'profile' => 'http://example.org/docs/example-service.html',
-        );
-        */
+	// TODO To parameter or to extract from metadata.
+	/*
+	$metadata['service'] = array(
+	    '@context' =>'http://example.org/ns/jsonld/context.json',
+	    '@id' => 'http://example.org/service/example',
+	    'profile' => 'http://example.org/docs/example-service.html',
+	);
+	 */
 
-        // TODO To parameter or to extract from metadata (Dublin Core Relation).
-        /*
-        $metadata['seeAlso'] = array(
-            '@id' => 'http://www.example.org/library/catalog/book1.marc',
-            'format' =>'application/marc',
-        );
-        */
+	// TODO To parameter or to extract from metadata (Dublin Core Relation).
+	/*
+	$metadata['seeAlso'] = array(
+	    '@id' => 'http://www.example.org/library/catalog/book1.marc',
+	    'format' =>'application/marc',
+	);
+	 */
 
-        $withins = [];
-        foreach ($item->itemSets() as $itemSet) {
-            $within = $this->view->url(
-                'iiifserver_presentation_collection',
-                ['id' => $itemSet->id()],
-                ['force_canonical' => true]
-            );
-            $within = $this->view->iiifForceBaseUrlIfRequired($within);
-            $withins[] = $within;
-        }
-        if (!empty($withins)) {
-            $within = count($withins) > 1
-                ? $withins
-                : reset($withins);
-            $metadata['within'] = $within;
-        }
+	// Search service
+	$searchServiceProperty = $this->view->setting('iiifserver_manifest_search_service_url');
+	if ($searchServiceProperty) {
+		$searchServiceUrl = $searchServiceProperty . "/" . $item->id() . "search";
+		$manifest['service'] = [
+			array(
+				'@context' => 'http://iiif.io/api/search/0/context.json',
+				'@id' => $searchServiceUrl,
+				'profile' => 'http://iiif.io/api/search/0/search',
+				'label' => 'Search within this manifest',
+			),
+		];
+	}
 
-        $canvases = [];
+	$withins = [];
+	foreach ($item->itemSets() as $itemSet) {
+		$within = $this->view->url(
+			'iiifserver_presentation_collection',
+			['id' => $itemSet->id()],
+			['force_canonical' => true]
+		);
+		$within = $this->view->iiifForceBaseUrlIfRequired($within);
+		$withins[] = $within;
+	}
+	if (!empty($withins)) {
+		$within = count($withins) > 1
+			? $withins
+			: reset($withins);
+		$metadata['within'] = $within;
+	}
 
-        // Get all images and non-images and detect json files (for 3D model).
-        $medias = $item->media();
-        $images = [];
-        $nonImages = [];
-        $jsonFiles = [];
-        foreach ($medias as $media) {
-            $mediaType = $media->mediaType();
-            // Images files.
-            // Internal: has_derivative is not only for images.
-            if (strpos($mediaType, 'image/') === 0) {
-                $images[] = $media;
-            }
-            // Non-images files.
-            else {
-                $nonImages[] = $media;
-                if ($mediaType == 'application/json') {
-                    $jsonFiles[] = $media;
-                }
-                  // Check if this is a json file for old Omeka or old imports.
-                  elseif ($mediaType == 'text/plain') {
-                      // Currently, the extension is "txt", even for json files.
-                    // switch (strtolower($media->extension())) {
-                    //   case 'json':
-                    //       $jsonFiles[] = $media;
-                    //       break;
-                    // }
-                    if (pathinfo($media->source(), PATHINFO_EXTENSION) == 'json') {
-                        $jsonFiles[] = $media;
-                    }
-                  }
-            }
-        }
-        unset($medias);
-        $totalImages = count($images);
-        $totalJsonFiles = count($jsonFiles);
+	$canvases = [];
 
-        // Prepare an exception.
-        // TODO Check if this is really a 3D model for three.js (see https://threejs.org).
-        $isThreejs = $totalJsonFiles == 1;
+	// Get all images and non-images and detect json files (for 3D model).
+	$medias = $item->media();
+	$images = [];
+	$nonImages = [];
+	$jsonFiles = [];
+	foreach ($medias as $media) {
+		$mediaType = $media->mediaType();
+		// Images files.
+		// Internal: has_derivative is not only for images.
+		if (strpos($mediaType, 'image/') === 0) {
+			$images[] = $media;
+		}
+		// Non-images files.
+		else {
+			$nonImages[] = $media;
+			if ($mediaType == 'application/json') {
+				$jsonFiles[] = $media;
+			}
+			// Check if this is a json file for old Omeka or old imports.
+			elseif ($mediaType == 'text/plain') {
+				// Currently, the extension is "txt", even for json files.
+				// switch (strtolower($media->extension())) {
+				//   case 'json':
+				//       $jsonFiles[] = $media;
+				//       break;
+				// }
+				if (pathinfo($media->source(), PATHINFO_EXTENSION) == 'json') {
+					$jsonFiles[] = $media;
+				}
+			}
+		}
+	}
+	unset($medias);
+	$totalImages = count($images);
+	$totalJsonFiles = count($jsonFiles);
 
-        // Process images, except if they belong to a 3D model.
-        if (!$isThreejs) {
-            $imageNumber = 0;
-            foreach ($images as $media) {
-                $canvas = $this->_iiifCanvasImage($media, ++$imageNumber);
+	// Prepare an exception.
+	// TODO Check if this is really a 3D model for three.js (see https://threejs.org).
+	$isThreejs = $totalJsonFiles == 1;
+
+	// Process images, except if they belong to a 3D model.
+	if (!$isThreejs) {
+		$imageNumber = 0;
+		foreach ($images as $media) {
+			$canvas = $this->_iiifCanvasImage($media, ++$imageNumber);
 
                 // TODO Add other content.
                 /*
